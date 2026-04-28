@@ -29,6 +29,25 @@ def list_files_in_dir(directory="."):
 
 tools = [
     {
+        "type": "function",
+        "function": {
+            "name": "list_files_in_dir",
+            "description": "Lista los archivos que existen en un directorio dado(por defector es el directorio actual)",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "directory": {
+                        "type": "string",
+                        "description": "Directorio para listar(opcional). Por defecto es el directorio actual"
+                    }
+                }
+            }
+        }
+    }
+]
+"""
+tools = [
+    {
         "type":"function",
         "name":"list_files_in_dir",
         "description":"Lista los archivos que existen en un directorio dado(por defector es el directorio actual)",
@@ -45,7 +64,7 @@ tools = [
     },
 
 ]
-
+"""
 while True:
     user_input = input("Magic: ").strip()
 
@@ -65,8 +84,8 @@ while True:
         messages= messages,
         tools = tools
           #[
-            #{"role":"user","content":user_input}
-            #{"role":"user","content":"Dime el nombre de 5 personajes del señor de los anillos(Solo el nombre nada mas)"}
+          #  {"role":"user","content":user_input}
+          #  {"role":"user","content":"Dime el nombre de 5 personajes del señor de los anillos(Solo el nombre nada mas)"}
           #]
     )
     #assistant_replay = response.choices[0].message.content
@@ -75,12 +94,30 @@ while True:
 
     #print(f"Asistente:{assistant_replay}")
 
-    messages += response.choices[0].message.content
+    message = response.choices[0].message
+    print(message)
+    # TOOL CALL
+    if message.tool_calls:
+        for tool_call in message.tool_calls:
+            fn_name = tool_call.function.name
+            args = json.loads(tool_call.function.arguments)
 
-    for output in response.output:
-        if output.type == "function_call":
-            fn_name = output.name
-            args = json.loads(output.arguments)
-            print(f"El modelo considera llamar a la herramienta {fn_name}")
-        elif output.type == "message":
-            print(f"Asistente: {output.content}")
+            print(f"⚙️ El modelo quiere usar: {fn_name}")
+
+            if fn_name == "list_files_in_dir":
+                result = list_files_in_dir(**args)
+
+            messages.append({
+                "role": "tool",
+                "tool_call_id": tool_call.id,
+                "content": json.dumps(result)
+            })
+
+    # RESPUESTA NORMAL
+    elif message.content:
+        print(f"Asistente: {message.content}")
+
+        messages.append({
+            "role": "assistant",
+            "content": message.content
+        })
